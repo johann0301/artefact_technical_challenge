@@ -13,7 +13,7 @@ pipeline, and makes its tool-routing decisions visible in both CLI and Streamlit
 - Order data requires an unambiguous customer phone or e-mail and never returns another customer's order.
 - Streamlit shows tool names and arguments without exposing private chain-of-thought.
 - Conversation history is preserved in memory for follow-up questions within one session.
-- Eight live golden scenarios (`pytest -m live`) guard tool routing, grounding, and the privacy guardrail
+- Nine live golden scenarios (`pytest -m live`) guard tool routing, grounding, and the privacy guardrail
   against prompt or model regressions.
 
 The detailed design and trade-offs are documented in [Architecture](docs/architecture.md) and
@@ -30,8 +30,8 @@ The detailed design and trade-offs are documented in [Architecture](docs/archite
 ### 1. Install the locked environment
 
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+git clone https://github.com/johann0301/artefact_technical_challenge.git
+cd artefact_technical_challenge
 uv sync --locked
 ```
 
@@ -124,6 +124,9 @@ Pydantic models, and the LLM is responsible only for selecting a tool and phrasi
 
 - **Single agent:** four clear intents do not justify an additional router or state graph.
 - **PydanticAI:** concise typed tool schemas, validation, provider configuration, and event streaming.
+- **`gpt-4o-mini` via OpenAI API:** reliable tool calling at negligible cost — the whole challenge runs for
+  cents, and the evaluator most likely already has a key. The model is a config string (`MODEL` env var), so
+  revisiting the choice is a one-line change.
 - **SQLite:** deterministic joins and filters with no external infrastructure for 65 products and 20 orders.
 - **Section-based RAG:** the policy manual already has coherent numbered sections, so fixed-size chunks would cut
   rules unnecessarily.
@@ -131,6 +134,28 @@ Pydantic models, and the LLM is responsible only for selecting a tool and phrasi
 - **Streamlit plus CLI:** fast development and transcript capture, plus an evaluator-friendly visual interface.
 
 Rejected alternatives and scale-up paths are recorded in [docs/decisions.md](docs/decisions.md).
+
+### Prompt strategy
+
+The persona instructions (PT-BR, [src/emporio/persona.py](src/emporio/persona.py)) are grounded in the store's
+own policy manual: §7 defines the official service tone ("acolhedor, informal e profissional") and §1 defines
+the store identity. On top of the persona, the instructions encode five kinds of rules:
+
+- **Grounding:** prices, stock, orders, and policy rules must come from tool results; when a tool returns
+  nothing, say so — never guess. Tool descriptions themselves act as the routing layer.
+- **Scope:** the store sells instruments only; the accessory exclusion (strings, picks, cables, cases, pedals,
+  amps) is enumerated explicitly because live testing showed routing alone matched "cordas de violão" against
+  7-string guitars. Off-topic questions are redirected without answering their content.
+- **Privacy:** order lookups require a customer phone or e-mail before the tool is called; the deterministic
+  ownership check lives in the tool itself, not in the prompt.
+- **Policy-first answers:** questions about rules are answered from the policies before any identification is
+  requested; identification is only needed to apply a rule to a specific order.
+- **Dates:** "today" is injected at session start, and the model is forbidden from doing calendar arithmetic —
+  the order tool provides `days_since_receipt` computed in code, and the model only compares it against the
+  policy window.
+
+Rules were added and tightened based on live-model failures, and each failure became a scenario in the live
+eval suite (see below).
 
 ## Data and privacy behavior
 
@@ -202,7 +227,7 @@ re-run a failed scenario once before treating it as a regression.
 
 - Chat and policy ingestion require an OpenAI key and network access. A keyword retrieval fallback could support
   offline use.
-- Behavior evals cover eight golden scenarios; a production agent would grow this into a versioned eval dataset
+- Behavior evals cover nine golden scenarios; a production agent would grow this into a versioned eval dataset
   with LLM-judged quality dimensions running in CI.
 - Receipt dates are inferred because the source schema lacks `delivered_at`.
 - History is in memory only and resets with the process or Streamlit session.
@@ -221,9 +246,24 @@ edge cases, and run verification checks. The workflow was iterative: architectur
 implementation was split into small commits; generated code was checked against the actual schemas and installed
 library APIs; and each phase was gated by tests, linting, and manual inspection.
 
-The assistant exposed useful issues rather than hiding them—for example, the duplicated customer e-mail, the lack
-of `delivered_at`, and the need to ignore blank optional `.env` values. Technical choices and rejected alternatives
-remain explicit in the repository rather than being delegated to the coding assistant.
+Concrete examples of how the workflow shaped the result:
+
+- **Docs before code.** Deliverables were mapped from the challenge PDF into a checklist, and every technical
+  decision was debated and recorded as an ADR (with rejected alternatives and at-scale notes) before the first
+  line of implementation. The ADRs later became this README's justification sections.
+- **Live review as a gate.** Driving the real model through test scenarios exposed three persona failures
+  (accessory questions matched 7-string guitars; policy questions demanded identification first; off-topic
+  questions were answered) and one grounding failure (the model miscounted a February→July gap as within a
+  7-day window). Each fix moved logic to the right layer — enumerated scope rules in the persona, date
+  arithmetic into deterministic tool code — and each failure became a permanent scenario in `pytest -m live`.
+- **Scope reversals recorded, not hidden.** A React front-end and a FastAPI interface were built, reconsidered
+  against the repo's own anti-overengineering rule, and removed; ADR-010 and the commit history document the
+  full reasoning instead of a force-pushed clean slate.
+- **Dataset issues surfaced.** The duplicated customer e-mail, the missing `delivered_at` column, and blank
+  optional `.env` values were all found by the assistant and handled explicitly rather than silently.
+
+Technical choices and rejected alternatives remain explicit in the repository rather than being delegated to
+the coding assistant.
 
 ## Project structure
 
