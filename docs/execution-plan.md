@@ -55,20 +55,16 @@ Principle: working vertical slice early; polish and bonus at the end.
   guardrail-critical only. Never cut: README quality, example conversations, privacy guardrail.
 - Embedding/API issues fallback: keyword section-matching for policies (documented as limitation).
 
-## Scope extension (decided 2026-07-03) — API interface + behavior evals
+## Scope extension (decided 2026-07-03) — behavior evals (front-end and API built, then removed)
 
-Added after the core deliverable was complete and live-tested. Rationale: ADR-010 (FastAPI SSE endpoint as third
-thin interface) and ADR-011 (golden-scenario evals encoding the live-review findings). A custom React front-end
-was started here and **deliberately dropped mid-way** (see ADR-010): Streamlit already covers the visual demo,
-and a second chat UI added complexity without new signal. Cut rule: if anything slips, the core deliverable
-ships as-is — this extension is additive only.
+Added after the core deliverable was complete and live-tested. A custom React front-end and a FastAPI SSE
+endpoint were built here and **both deliberately removed** (full reasoning in ADR-010): Streamlit already covers
+the demo, and neither survived the repo's own bar — every layer needs a justification anchored in this problem.
+The removals stay visible in Git history as part of the decision record. What remains is ADR-011.
 
-- [x] `src/emporio/api.py`: FastAPI `POST /api/chat` (SSE: `tool_call`, `text`, `done`), per-session in-memory
-      history, `/api/health`; `emporio-api` entry point; `fastapi` + `uvicorn` deps
-- [x] `tests/test_api.py`: endpoint contract (missing-key error path, SSE event shape, error event)
-- [ ] `tests/test_behavior_live.py`: ~8 golden scenarios (routing + key facts), `pytest -m live`, skipped
-      without `OPENAI_API_KEY`
-- [ ] README: API run instructions + eval section
-- [ ] End-to-end verification of the three interfaces + live eval run
+- [x] `tests/test_behavior_live.py`: 8 golden scenarios (routing + key facts), `pytest -m live`, skipped
+      without `OPENAI_API_KEY` — encodes the live-review findings as regression tests
+- [x] README: behavior evals section; interface scope kept CLI + Streamlit
+- [x] Live verification: full suite green, 8/8 live evals green
 - Commits: `feat: add fastapi chat endpoint with sse streaming`, `test: cover sse chat endpoint contract`,
-  `test: add live behavior eval suite`, `docs: document api interface and behavior evals`
+  `test: add live behavior eval suite`, `refactor: remove api interface, keep cli and streamlit`

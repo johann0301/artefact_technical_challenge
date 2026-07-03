@@ -2,7 +2,7 @@
 
 Customer-support agent built in Python for the Artefact AI Engineer technical challenge. It answers Brazilian
 customers in PT-BR, queries operational data through typed tools, retrieves store policies through a small RAG
-pipeline, and makes its tool-routing decisions visible in CLI, Streamlit, and a streaming API.
+pipeline, and makes its tool-routing decisions visible in both CLI and Streamlit.
 
 ## What it demonstrates
 
@@ -12,7 +12,6 @@ pipeline, and makes its tool-routing decisions visible in CLI, Streamlit, and a 
 - Product and order queries use parameterized SQL; no text-to-SQL is exposed to the model.
 - Order data requires an unambiguous customer phone or e-mail and never returns another customer's order.
 - Streamlit shows tool names and arguments without exposing private chain-of-thought.
-- A FastAPI endpoint streams the same turns as Server-Sent Events (`tool_call`, `text`, `done`).
 - Conversation history is preserved in memory for follow-up questions within one session.
 - Eight live golden scenarios (`pytest -m live`) guard tool routing, grounding, and the privacy guardrail
   against prompt or model regressions.
@@ -91,25 +90,10 @@ Streamlit:
 uv run streamlit run app.py
 ```
 
-API (FastAPI, Server-Sent Events):
-
-```bash
-uv run emporio-api
-```
-
-```bash
-curl -N http://127.0.0.1:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Quanto custa o Takamine GD20?", "session_id": "demo"}'
-```
-
-The endpoint streams `tool_call`, `text` (answer deltas), and `done` events; history is kept in memory per
-`session_id`, and `GET /api/health` answers `{"status": "ok"}`.
-
 ## Configuration
 
 | Variable | Required | Default | Purpose |
-|---|---:|---|---|
+| --- | ---: | --- | --- |
 | `OPENAI_API_KEY` | Yes | — | Authenticates chat and embedding requests |
 | `MODEL` | No | `openai:gpt-4o-mini` | PydanticAI model identifier |
 | `EMBEDDING_MODEL` | No | `text-embedding-3-small` | Embedding model used by the policy index |
@@ -127,7 +111,7 @@ REFERENCE_DATE=2026-02-20
 Customer message
       │
       ▼
-CLI / Streamlit / FastAPI (SSE) ──► PydanticAI agent ──► typed tool selection
+CLI / Streamlit ──► PydanticAI agent ──► typed tool selection
                                            ├── catalog/products ──► SQLite
                                            ├── customer orders ───► SQLite
                                            └── store policies ────► ChromaDB
@@ -197,8 +181,7 @@ Coverage includes:
 - effective promotional prices, stock filtering, name normalization, and injection-shaped input;
 - customer identification, duplicate e-mails, and cross-customer order protection;
 - PDF section extraction, local vector ingestion, and policy retrieval;
-- agent configuration, persona rules, streaming, history, and Streamlit startup errors;
-- the SSE endpoint contract: event order, error events, session history, and missing-key responses.
+- agent configuration, persona rules, streaming, history, and Streamlit startup errors.
 
 Live behavior evals (optional, needs `OPENAI_API_KEY`, costs cents):
 
@@ -245,7 +228,6 @@ remain explicit in the repository rather than being delegated to the coding assi
 ├── examples/                 # Five PT-BR interaction transcripts
 ├── src/emporio/
 │   ├── agent.py              # PydanticAI tools and event streaming
-│   ├── api.py                # FastAPI SSE chat endpoint
 │   ├── cli.py                # Rich terminal interface and transcript export
 │   ├── etl.py                # Atomic CSV-to-SQLite ingestion
 │   ├── ingest_policies.py    # PDF section extraction and embeddings

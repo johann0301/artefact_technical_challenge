@@ -243,39 +243,39 @@ deterministically in tools, not by the LLM.
 
 ---
 
-## ADR-010 — Third interface: FastAPI SSE endpoint (custom React front-end considered and dropped)
+## ADR-010 — Interface scope: CLI + Streamlit only (React front-end and API built, then removed)
 
-**Context.** The challenge statement lists "API" among the accepted interfaces. The repo already had CLI and
-Streamlit over an interface-agnostic core. A custom React front-end (Vite + TS + Tailwind, production build
-committed so the evaluator would not need Node) was planned and started, then reconsidered.
+**Context.** After the core deliverable was complete, two additions were considered to strengthen the
+submission: a custom React front-end and a FastAPI SSE endpoint to back it. The API was implemented and fully
+tested (SSE contract with `tool_call`/`text`/`done` events, per-session history, error paths), and the React
+scaffold was started.
 
-**Decision.**
+**Decision.** Remove both, returning to CLI + Streamlit. The reasoning, in the order it happened:
 
-- Keep `src/emporio/api.py`: FastAPI exposing `POST /api/chat` as **Server-Sent Events** (`tool_call`, `text`
-  delta, and `done` events) with per-`session_id` in-memory history — the same `run_turn` callbacks the CLI and
-  Streamlit consume, serialized over HTTP. Demonstrable with `curl`; `/api/health` for checks.
-- **Drop the React front-end.** The statement explicitly de-prioritizes UI ("the focus is the agent working
-  correctly"), Streamlit already provides the visual demo with tool-call visibility, and a second chat UI would
-  duplicate that at the cost of a Node toolchain, committed build artifacts, and more surface for the evaluator
-  to review — complexity without new signal. Reversing the earlier plan mid-way was cheaper than carrying it.
+1. The React front-end was dropped first: the statement explicitly de-prioritizes UI, and Streamlit already
+   provides the visual demo with tool-call visibility — a second chat UI added a Node toolchain and committed
+   build artifacts without new signal.
+2. That removed the API's consumer. Kept briefly as a "third interface", it then failed this repo's own bar
+   ("every layer needs a justification anchored in this problem"): nobody consumes it in this challenge, and
+   CLI + Streamlit already cover every evaluation scenario. "It demonstrates service design" is a
+   résumé-driven justification, not a problem-driven one.
 
 **Why.**
 
-- The API is one small, fully tested module that shows service design (streaming contract, error paths,
-  session state) without touching the agent core.
-- SSE over WebSockets: the chat is strictly request→streamed-response; SSE is plain HTTP and simpler to test.
-- The front-end failed this repo's own bar — every layer needs a justification anchored in this problem, and
-  "a second chat UI" had none once Streamlit existed.
+- The strongest property of this submission is scope coherence: each layer exists because the problem needs it.
+  Three interfaces for one agent invites exactly the question ("why so many?") the repo is built to avoid.
+- The removal is recorded in Git history rather than hidden by force-push — the challenge evaluates decision
+  quality, and reversing a decision cheaply, with the reasoning written down, is part of that.
 
 **Rejected alternatives.**
 
-- *React + committed `dist/` served by FastAPI*: preserved the uv-only run path, but shipped generated files in
-  Git and duplicated the Streamlit demo. Dropped.
-- *Next.js*: one page, no SSR/SEO/routing need; would force a Node server or a static export.
+- *Keep the API as an integration surface*: realistic for production (a WhatsApp webhook would consume exactly
+  that endpoint), but hypothetical here; documented as the at-scale path instead of shipped unused.
+- *Keep React + committed `dist/`*: duplicated the Streamlit demo at the cost of a second toolchain.
 
-**At scale.** A real product gets a real front-end (Next.js or the team's standard) consuming this same SSE
-contract, CI-built; WebSockets if bidirectional events appear (typing indicators, human handoff); auth and rate
-limiting on the API.
+**At scale.** The API returns as the first thing a real deployment needs: a service exposing the agent to
+channels (WhatsApp webhook, site widget) via SSE/WebSockets, with auth, rate limiting, and observability —
+followed by a real front-end (Next.js or the team's standard) consuming it.
 
 ---
 

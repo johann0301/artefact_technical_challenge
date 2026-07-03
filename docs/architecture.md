@@ -61,14 +61,12 @@ emporio_agent/
 │   ├── tools.py              # the 4 typed tools
 │   ├── agent.py              # PydanticAI agent + persona prompt
 │   ├── persona.py            # agent instructions (PT-BR)
-│   ├── cli.py                # chat loop (rich), streaming, transcript export
-│   └── api.py                # FastAPI: POST /api/chat (SSE), /api/health (ADR-010)
+│   └── cli.py                # chat loop (rich), streaming, transcript export
 ├── app.py                    # Streamlit chat: streaming + tool-call visibility (expander per response)
 └── tests/
     ├── test_etl.py
     ├── test_tools.py         # incl. privacy guardrail cases
     ├── test_retrieval.py
-    ├── test_api.py           # SSE endpoint contract
     └── test_behavior_live.py # golden scenarios vs real model (pytest -m live, ADR-011)
 ```
 
@@ -104,17 +102,16 @@ emporio_agent/
 
 ## Interfaces
 
-Three thin layers over the same `agent.py` core (`run_turn` + its `on_text`/`on_tool_call` callbacks):
+Two thin layers over the same `agent.py` core (`run_turn` + its `on_text`/`on_tool_call` callbacks):
 
 - **CLI** (`cli.py`): primary dev interface; streams all agent and tool events with `run_stream_events`; exports
   session transcripts to `.md` (doubles as the example-conversation deliverable).
 - **Streamlit** (`app.py`): zero-friction chat. Streams responses and renders an expander per answer showing
   which tools were called and with what arguments (🔧 catalog / 📦 orders / 📖 policies). This makes the agent's
   routing — "knows when to query data vs policies", an explicitly evaluated behavior — directly observable.
-- **FastAPI** (`src/emporio/api.py`, ADR-010): `POST /api/chat` streams Server-Sent Events — `tool_call`
-  (name + args, emitted when the call happens), `text` (answer deltas), `done` (turn complete). History kept
-  in memory per `session_id`; `/api/health` for checks. Run with `uv run emporio-api`, demo with `curl -N`.
-  A custom React front-end was considered and dropped (see ADR-010) — Streamlit already covers the visual demo.
+
+A FastAPI SSE endpoint and a React front-end were built and deliberately removed (ADR-010): with Streamlit
+already covering the demo, neither had a justification anchored in this problem.
 
 ## Behavior evals (ADR-011)
 
