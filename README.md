@@ -139,6 +139,8 @@ Rejected alternatives and scale-up paths are recorded in [docs/decisions.md](doc
   active product is out of stock.
 - Active promotions are applied before price filters and are never cumulative.
 - Phone numbers, e-mails, and product names are normalized before deterministic lookup.
+- Day counts for date-based policy rules (`days_since_receipt`) are computed in code against the reference
+  date; the model compares numbers against policy windows but never does calendar arithmetic.
 - An order query always filters by the matched `customer_id`. Unknown customers and wrong customer/order
   combinations receive the same safe error.
 - The source data contains one duplicated customer e-mail. That e-mail is considered ambiguous and returns no
@@ -189,10 +191,12 @@ Live behavior evals (optional, needs `OPENAI_API_KEY`, costs cents):
 uv run pytest -m live
 ```
 
-Eight golden scenarios assert which tools the agent calls and key facts or refusals in the answers — catalog
+Nine golden scenarios assert which tools the agent calls and key facts or refusals in the answers — catalog
 filtering, product-name normalization, policy-first answers, address lookup, order status, the cross-customer
-privacy guardrail, the accessory refusal, and off-topic redirection. Several encode failures found during manual
-live review, so they act as regression tests for the persona and routing.
+privacy guardrail, the accessory refusal, off-topic redirection, and the expired return window. Several encode
+failures found during manual live review, so they act as regression tests for the persona and routing. The
+scenarios are stable at temperature 0.1, but live-model wording can occasionally flip a single assertion —
+re-run a failed scenario once before treating it as a regression.
 
 ## Known limitations and next steps
 
@@ -202,6 +206,9 @@ live review, so they act as regression tests for the persona and routing.
   with LLM-judged quality dimensions running in CI.
 - Receipt dates are inferred because the source schema lacks `delivered_at`.
 - History is in memory only and resets with the process or Streamlit session.
+- The agent is deliberately read-only: it explains return rules, prices, and order status but does not execute
+  returns, cancellations, purchases, or stock updates. Write actions would require confirmation flows, an
+  order-management/inventory integration, and authorization — none of which exist in the supplied dataset.
 - There is no production authentication, PII masking in logs, human handoff, tracing, or rate limiting.
 - A production version would use an order-management API, durable sessions, hybrid retrieval with reranking,
   observability, automated agent evals, and an authenticated customer channel such as WhatsApp.

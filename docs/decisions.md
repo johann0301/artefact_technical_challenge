@@ -225,6 +225,12 @@ the real current date; the `REFERENCE_DATE` env var overrides it (e.g. `REFERENC
 treats `estimated_delivery` as the receipt date for delivered orders and makes that assumption explicit in the answer
 and README.
 
+**Amendment (2026-07-03, after a live failure).** Knowing "today" is not enough: given a February receipt date and
+a July "today", the model still judged the order to be *within* the 7-day regret window — LLMs miscount calendar
+differences. The day count now lives in code: `get_order_status` returns `days_since_receipt` computed with the
+reference date, and the persona forbids the model from doing date arithmetic — it only compares that number
+against the policy window retrieved from the PDF. The rule (7 days) stays in the policies; the math stays in code.
+
 **Why.**
 
 - LLMs don't reliably know the current date; date-relative policy rules need an authoritative anchor.
