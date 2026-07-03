@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "chromadb>=1.0,<2",
+    "fastapi>=0.115,<1",
     "openai>=1.0,<3",
     "pydantic>=2.10,<3",
     "pydantic-ai-slim[openai]>=1.0,<2",
@@ -13,11 +14,13 @@ dependencies = [
     "pypdf>=5,<7",
     "rich>=13.9,<15",
     "streamlit>=1.40,<2",
+    "uvicorn>=0.32,<1",
 ]
 
 [project.scripts]
 emporio-setup = "emporio.setup:main"
 emporio-chat = "emporio.cli:main"
+emporio-api = "emporio.api:main"
 
 [dependency-groups]
 dev = [
@@ -34,9 +37,12 @@ build-backend = "hatchling.build"
 packages = ["src/emporio"]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q -m 'not live'"
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "live: golden behavior scenarios against the real model (needs OPENAI_API_KEY, costs cents)",
+]
 
 [tool.ruff]
 line-length = 100
