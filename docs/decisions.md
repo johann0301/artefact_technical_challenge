@@ -11,8 +11,8 @@ line between "right-sized" and "overengineered" stays explicit.
 **Context.** The domain has ~4 clear intents: catalog/price queries, order status, policy questions, out-of-scope.
 Deadline is 4 days. The challenge evaluates reasoning quality, not architecture size.
 
-**Decision.** One agent with a persona system prompt and 4–6 typed tools. The LLM routes by choosing which tool
-to call. Scope handling lives in the system prompt + a final fallback behavior.
+**Decision.** One agent with persona instructions and four typed tools. The LLM routes by choosing which tool
+to call. Scope handling lives in the instructions + a final fallback behavior.
 
 **Why.**
 
@@ -196,8 +196,10 @@ requirement.
 
 **Decision.**
 
-- **Scope**: persona system prompt defines what the agent does/doesn't answer; off-topic questions get a polite
-  in-persona redirect. Store-specific edge (accessories) is grounded via the policies tool, not hardcoded.
+- **Scope**: persona instructions define what the agent does/doesn't answer; off-topic questions get a polite
+  in-persona redirect. The accessory exclusion (strings, picks, cables, cases, pedals, amps — policy §1) is
+  enumerated directly in the instructions: it is a small, stable business rule, and live testing showed that
+  relying on tool routing alone made the model match "cordas de violão" against 7-string guitars in the catalog.
 - **Privacy**: `get_order_status` requires a customer identifier (phone or e-mail; order id optional — customers
   rarely know it) and the tool itself validates that the identifier matches the order's customer — the check is
   deterministic code, not model goodwill. Tools never return other customers' data.
@@ -217,7 +219,7 @@ Policy rules are date-relative — §4.1 right of regret is 7 days from receipt,
 real date, the challenge's own suggested scenario ("me arrependi da minha compra, posso devolver?") would *always*
 resolve to "deadline expired", and shipped orders would show stale delivery estimates.
 
-**Decision.** The system prompt receives an explicit "today is YYYY-MM-DD" line at session start. It defaults to
+**Decision.** The runtime instructions receive an explicit "today is YYYY-MM-DD" line at session start. It defaults to
 the real current date; the `REFERENCE_DATE` env var overrides it (e.g. `REFERENCE_DATE=2026-02-20` to demo order
 7 within the regret window). Because the dataset does not provide an actual `delivered_at` timestamp, the prototype
 treats `estimated_delivery` as the receipt date for delivered orders and makes that assumption explicit in the answer

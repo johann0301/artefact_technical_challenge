@@ -7,7 +7,7 @@ Rationale for every choice here: `docs/decisions.md` (ADR-001…009).
 ```mermaid
 flowchart TD
     U[Customer message] --> CLI[CLI chat / Streamlit]
-    CLI --> A["Agent (PydanticAI)\npersona system prompt + message history"]
+    CLI --> A["Agent (PydanticAI)\npersona instructions + message history"]
     A -->|tool call| T1[search_products]
     A -->|tool call| T2[get_product_details]
     A -->|tool call| T3[get_order_status]
@@ -60,7 +60,7 @@ emporio_agent/
 │   ├── retrieval.py          # policy search
 │   ├── tools.py              # the 4 typed tools
 │   ├── agent.py              # PydanticAI agent + persona prompt
-│   ├── persona.py            # system prompt (PT-BR)
+│   ├── persona.py            # agent instructions (PT-BR)
 │   └── cli.py                # chat loop (rich), streaming, transcript export
 ├── app.py                    # Streamlit chat: streaming + tool-call visibility (expander per response)
 └── tests/
@@ -76,11 +76,13 @@ emporio_agent/
   Campo Grande/MS, instruments only).
 - **Grounding rule**: prices, stock, order info, and policy rules must come from tool results. If a tool returns
   nothing, say so honestly — never guess.
-- **Scope rule**: off-topic → polite redirect to store subjects; accessory questions → explain the store sells
-  instruments only (grounded via `search_policies`).
+- **Scope rule**: off-topic → polite redirect without answering the content; accessory questions → explain the
+  store sells instruments only. The accessory list (strings, picks, cables, cases, pedals, amps) is stated in the
+  instructions: live testing showed the model otherwise matched "cordas de violão" against "7-string" guitars in
+  the catalog and answered as if the store sold strings.
 - **Identification flow**: order-status requests without phone/e-mail → ask for an identifier before calling the tool
   (order id optional — identifier alone lists the customer's orders).
-- **Date awareness**: "today" is injected into the system prompt at session start (ADR-009). Defaults to the real
+- **Date awareness**: "today" is injected into the runtime instructions at session start (ADR-009). Defaults to the real
   date; `REFERENCE_DATE` env var overrides it for demos, since the dataset's orders span 2025-10 → 2026-03 and
   date-relative rules (7-day right of regret) would otherwise always evaluate as expired.
 - **Receipt-date assumption**: the dataset has no `delivered_at` field. For delivered orders, the prototype treats
