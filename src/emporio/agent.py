@@ -130,9 +130,7 @@ def build_agent(
         )
 
     @agent.tool
-    def search_policies(
-        ctx: RunContext[AgentDependencies], question: str
-    ) -> list[PolicyChunk]:
+    def search_policies(ctx: RunContext[AgentDependencies], question: str) -> list[PolicyChunk]:
         """Search store policies for hours, payment, returns, shipping, warranty, or privacy."""
 
         return ctx.deps.policy_retriever.search(question)

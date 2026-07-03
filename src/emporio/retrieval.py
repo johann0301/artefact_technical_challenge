@@ -53,7 +53,5 @@ class PolicyRetriever:
                 pages=str(metadata["pages"]),
                 distance=distance,
             )
-            for document, metadata, distance in zip(
-                documents, metadatas, distances, strict=True
-            )
+            for document, metadata, distance in zip(documents, metadatas, distances, strict=True)
         ]

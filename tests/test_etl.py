@@ -28,6 +28,7 @@ def test_build_database_loads_all_source_rows(tmp_path: Path) -> None:
     finally:
         connection.close()
 
+
 def test_build_database_is_idempotent(tmp_path: Path) -> None:
     database_path = tmp_path / "emporio.db"
     build_database(database_path)

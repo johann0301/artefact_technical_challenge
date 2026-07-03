@@ -67,9 +67,7 @@ def _cents_to_brl(value: int) -> Decimal:
 
 
 def _brl_to_cents(value: float) -> int:
-    return int(
-        (Decimal(str(value)) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    )
+    return int((Decimal(str(value)) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
 def _product_from_row(row: object, *, details: bool = False) -> ProductSummary | ProductDetails:
@@ -138,7 +136,7 @@ def search_products(
         JOIN categories AS c ON c.category_id = p.category_id
         LEFT JOIN promotions AS promo
             ON promo.product_id = p.product_id AND promo.is_active = 1
-        WHERE {' AND '.join(conditions)}
+        WHERE {" AND ".join(conditions)}
         ORDER BY effective_price_cents, p.name
     """
 
@@ -204,9 +202,7 @@ def _order_from_row(connection: object, row: object) -> OrderStatus:
         (order["order_id"],),
     ).fetchall()
     estimated_delivery = (
-        date.fromisoformat(order["estimated_delivery"])
-        if order["estimated_delivery"]
-        else None
+        date.fromisoformat(order["estimated_delivery"]) if order["estimated_delivery"] else None
     )
     delivered = order["status"] == "delivered"
     return OrderStatus(
