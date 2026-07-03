@@ -135,6 +135,25 @@ Pydantic models, and the LLM is responsible only for selecting a tool and phrasi
 
 Rejected alternatives and scale-up paths are recorded in [docs/decisions.md](docs/decisions.md).
 
+### Prior experience behind this shape
+
+I chose this architecture partly because I have shipped something very similar: a luxury-travel concierge that
+embedded hotel documentation (PDFs) and used RAG over the indexed content to answer questions from guests and
+staff. That project ran on Supabase and the Gemini API, but the pattern — unstructured documents, section-aware
+embedding, retrieval grounding a persona — transfers directly to the store-policies side of this challenge.
+
+That experience also taught me where this pattern stops being enough. When a product needs real orchestration —
+multiple agents fulfilling specific use cases, stateful multi-turn flows, human handoff — I would reach for
+LangChain/LangGraph: state graphs with an intent router, per-agent tool registries, persistent conversation
+checkpointers (Postgres/Mongo), and a conversational test harness (scripted fake user plus an LLM judge) as the
+natural growth of the eval suite used here. This challenge, with a small dataset and four clear intents, sits
+comfortably on the simple side of that line, so building that machinery would be overengineering (ADR-001).
+
+The commit history also shows a FastAPI endpoint and the start of a React front-end being added and later
+removed. I considered shipping a custom front-end, but solving the problem simply mattered more — Streamlit
+already provides a working chat that shows which tools the agent called, which is the property worth
+demonstrating (ADR-010 records the full reversal).
+
 ### Prompt strategy
 
 The persona instructions (PT-BR, [src/emporio/persona.py](src/emporio/persona.py)) are grounded in the store's
