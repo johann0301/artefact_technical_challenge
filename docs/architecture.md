@@ -61,12 +61,18 @@ emporio_agent/
 │   ├── tools.py              # the 4 typed tools
 │   ├── agent.py              # PydanticAI agent + persona prompt
 │   ├── persona.py            # agent instructions (PT-BR)
-│   └── cli.py                # chat loop (rich), streaming, transcript export
+│   ├── cli.py                # chat loop (rich), streaming, transcript export
+│   └── api.py                # FastAPI: POST /api/chat (SSE) + serves web/dist (ADR-010)
 ├── app.py                    # Streamlit chat: streaming + tool-call visibility (expander per response)
+├── web/                      # React + TS + Tailwind chat (Vite); dist/ committed
+│   ├── src/                  # App, ChatMessage, ToolCallBadge, useChatStream hook
+│   └── dist/                 # production build served by FastAPI (no Node needed to run)
 └── tests/
     ├── test_etl.py
     ├── test_tools.py         # incl. privacy guardrail cases
-    └── test_retrieval.py
+    ├── test_retrieval.py
+    ├── test_api.py           # SSE endpoint contract
+    └── test_behavior_live.py # golden scenarios vs real model (pytest -m live, ADR-011)
 ```
 
 ## Prompt / persona strategy
@@ -101,9 +107,22 @@ emporio_agent/
 
 ## Interfaces
 
-- **CLI** (`cli.py`): primary dev interface; streams all agent and tool events with `run_stream_events`; exports session transcripts to
-  `.md` (doubles as the example-conversation deliverable).
-- **Streamlit** (`app.py`): evaluator-facing chat. Streams responses and renders an expander per answer showing
+Three thin layers over the same `agent.py` core (`run_turn` + its `on_text`/`on_tool_call` callbacks):
+
+- **CLI** (`cli.py`): primary dev interface; streams all agent and tool events with `run_stream_events`; exports
+  session transcripts to `.md` (doubles as the example-conversation deliverable).
+- **Streamlit** (`app.py`): zero-friction chat. Streams responses and renders an expander per answer showing
   which tools were called and with what arguments (🔧 catalog / 📦 orders / 📖 policies). This makes the agent's
   routing — "knows when to query data vs policies", an explicitly evaluated behavior — directly observable.
-  Both are thin layers over the same `agent.py` core.
+- **FastAPI + React** (`src/emporio/api.py` + `web/`, ADR-010): `POST /api/chat` streams Server-Sent Events —
+  `tool_call` (name + args, emitted when the call happens), `text` (answer deltas), `done` (turn complete).
+  History kept in memory per `session_id`. FastAPI also serves the committed React build (`web/dist/`), so the
+  evaluator runs `uv run emporio-api` and opens a browser — Node.js is only needed to modify the front-end
+  (React + TypeScript + Tailwind via Vite; no router/state library — one page, one SSE hook).
+
+## Behavior evals (ADR-011)
+
+`tests/test_behavior_live.py` — golden scenarios against the real model asserting tool routing and key facts
+(price, refusals, privacy guardrail). Marked `live`, excluded from the default suite; `uv run pytest -m live`
+runs them with an `OPENAI_API_KEY`. Encodes the manual live-review findings (accessories trap, policy-first
+answers, off-topic redirect) as permanent regression tests.

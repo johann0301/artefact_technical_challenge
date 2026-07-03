@@ -54,3 +54,22 @@ Principle: working vertical slice early; polish and bonus at the end.
 - If behind after Day 2: cut Streamlit tool-call expander first (keep plain Streamlit chat), then reduce tests to
   guardrail-critical only. Never cut: README quality, example conversations, privacy guardrail.
 - Embedding/API issues fallback: keyword section-matching for policies (documented as limitation).
+
+## Scope extension (decided 2026-07-03) — React front-end + behavior evals
+
+Added after the core deliverable was complete and live-tested. Rationale: ADR-010 (custom front-end over the
+same agent core, evaluator still runs with uv only) and ADR-011 (golden-scenario evals encoding the live-review
+findings). Cut rule: if anything slips, the core deliverable ships as-is — this extension is additive only.
+
+- [ ] `src/emporio/api.py`: FastAPI `POST /api/chat` (SSE: `tool_call`, `text`, `done`), per-session in-memory
+      history, serves `web/dist/` statically; `emporio-api` entry point; `fastapi` + `uvicorn` deps
+- [ ] `tests/test_api.py`: endpoint contract (missing-key error path, SSE event shape)
+- [ ] `web/`: Vite + React + TypeScript + Tailwind chat — streamed text, tool calls visible per answer,
+      PT-BR UI; no router/state library (one page, one SSE hook)
+- [ ] Commit `web/dist/` production build (evaluator needs no Node)
+- [ ] `tests/test_behavior_live.py`: ~8 golden scenarios (routing + key facts), `pytest -m live`, skipped
+      without `OPENAI_API_KEY`
+- [ ] README: API/web run instructions + front-end dev section + eval section
+- [ ] End-to-end verification of all three interfaces + live eval run
+- Commits: `feat: add fastapi chat endpoint with sse streaming`, `feat: add react chat front-end`,
+  `chore: commit web production build`, `test: add live behavior eval suite`, `docs: document api, web ui, and evals`

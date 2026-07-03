@@ -240,3 +240,75 @@ and README.
 
 **At scale.** Time comes from the order-management system, not the prompt; policy windows computed
 deterministically in tools, not by the LLM.
+
+---
+
+## ADR-010 — Third interface: FastAPI + React chat with a committed production build
+
+**Context.** The role also involves full-stack work, and the repo so far demonstrates everything except a custom
+front-end (CLI + Streamlit only). The challenge statement de-prioritizes UI, and ADR-010's predecessor decisions
+established a hard constraint: the evaluator must be able to run everything with `uv` and one API key — no
+extra toolchain.
+
+**Decision.** Add a third thin interface over the same `agent.py` core:
+
+- `src/emporio/api.py`: FastAPI app exposing `POST /api/chat` as **Server-Sent Events** (`tool_call`, `text`
+  delta, and `done` events), with per-`session_id` in-memory history — the same events the CLI and Streamlit
+  already consume from `run_turn`, serialized over HTTP.
+- `web/`: React + TypeScript + Tailwind chat (Vite) rendering streamed text and the tool calls behind each
+  answer — the same routing-visibility concept as the Streamlit expander.
+- The production build (`web/dist/`) is **committed** and served statically by FastAPI: the evaluator runs
+  `uv run emporio-api` and opens a browser. Node.js is only needed to modify the front-end.
+
+**Why.**
+
+- Demonstrates API design + custom front-end integration without touching the agent core — the same
+  `run_turn` callbacks power all three interfaces, which is the point of keeping the core interface-agnostic.
+- Committing `dist/` preserves the zero-friction evaluator path (uv + one key), at the cost of ~200 kB of
+  generated files in Git — acceptable for a challenge repo, wrong for a team repo (see At scale).
+- SSE over WebSockets: the chat is strictly request→streamed-response; SSE is plain HTTP, simpler to test
+  with `httpx`, and needs no connection-state management.
+
+**Rejected alternatives.**
+
+- *Next.js (App Router)*: my default for real products, but here there is one page, no SSR/SEO/routing need,
+  and it would force either a Node server (breaks the uv-only run path) or static export (discards most of
+  what Next adds).
+- *Requiring `npm install && npm run build` from the evaluator*: violates the reproducibility constraint that
+  every other decision protected.
+- *tRPC / state libraries (Zustand, React Query)*: one endpoint, one page of UI state — `useState` and a small
+  SSE hook are sufficient.
+
+**At scale.** Next.js (or the team's standard), CI building the front-end instead of committing `dist/`,
+WebSockets if bidirectional events appear (typing indicators, human handoff), auth on the API, and rate limiting.
+
+---
+
+## ADR-011 — Agent behavior evals: live golden scenarios as an opt-in pytest marker
+
+**Context.** Deterministic tests cover tools, ETL, and retrieval plumbing, but the agent's *behavior* (tool
+routing, grounding, guardrails, scope) was only verified manually. That manual live review caught three real
+persona failures (ADR-008), proving this layer regresses silently — any prompt or model change can break it.
+
+**Decision.** `tests/test_behavior_live.py` with ~8 golden scenarios asserting, against the real model:
+(1) which tools were called (routing), and (2) key facts or refusals in the answer (grounding/guardrails).
+Marked `live` and excluded from the default run; `uv run pytest -m live` runs it when `OPENAI_API_KEY` is set.
+Costs cents per run.
+
+**Why.**
+
+- Routing assertions (`search_policies` was called; no catalog tool on an accessory question) are stable at
+  `temperature=0.1` and catch exactly the class of bug found manually.
+- Opt-in marker keeps the default suite free, fast, and runnable by the evaluator without a key.
+- Substring/fact assertions (price, section citation, refusal keywords) are crude but cheap and effective at
+  this scale; they encode the live-review findings as permanent regressions tests.
+
+**Rejected alternatives.**
+
+- *LLM-as-judge*: better for nuanced quality, but adds cost, flakiness, and a second prompt to maintain —
+  unjustified for 8 scenarios with objectively checkable outcomes.
+- *Mocking the model*: tests the harness, not the behavior; routing bugs live precisely in the real model call.
+- *No behavior tests*: the manual review already disproved "the prompt is obviously fine".
+
+**At scale.** Versioned eval dataset, LLM-judge for tone/quality dimensions, eval runs in CI on prompt/model
+changes, dashboards over time (promptfoo/braintrust-style), and red-team suites for the guardrails.
