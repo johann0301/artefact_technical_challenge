@@ -127,6 +127,7 @@ def build_agent(
             ctx.deps.settings.database_path,
             customer_phone_or_email=customer_phone_or_email,
             order_id=order_id,
+            today=ctx.deps.settings.reference_date or date.today(),
         )
 
     @agent.tool

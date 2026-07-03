@@ -49,6 +49,7 @@ class OrderStatus(BaseModel):
     estimated_delivery: date | None = None
     receipt_date: date | None = None
     receipt_date_is_estimated: bool = False
+    days_since_receipt: int | None = None
     notes: str | None = None
     items: list[OrderItem]
 

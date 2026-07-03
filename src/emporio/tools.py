@@ -189,7 +189,7 @@ def _payment_label(value: str) -> str:
     return PAYMENT_LABELS.get(value, value.replace("_", " "))
 
 
-def _order_from_row(connection: object, row: object) -> OrderStatus:
+def _order_from_row(connection: object, row: object, today: date) -> OrderStatus:
     order = dict(row)  # type: ignore[arg-type]
     item_rows = connection.execute(  # type: ignore[attr-defined]
         """
@@ -205,6 +205,7 @@ def _order_from_row(connection: object, row: object) -> OrderStatus:
         date.fromisoformat(order["estimated_delivery"]) if order["estimated_delivery"] else None
     )
     delivered = order["status"] == "delivered"
+    receipt_date = estimated_delivery if delivered else None
     return OrderStatus(
         order_id=order["order_id"],
         order_date=date.fromisoformat(order["order_date"]),
@@ -213,8 +214,10 @@ def _order_from_row(connection: object, row: object) -> OrderStatus:
         payment_method=_payment_label(order["payment_method"]),
         tracking_code=order["tracking_code"],
         estimated_delivery=estimated_delivery,
-        receipt_date=estimated_delivery if delivered else None,
+        receipt_date=receipt_date,
         receipt_date_is_estimated=delivered and estimated_delivery is not None,
+        # Computed in code so the model never does date arithmetic (it miscounts).
+        days_since_receipt=(today - receipt_date).days if receipt_date else None,
         notes=order["notes"],
         items=[OrderItem(**dict(item)) for item in item_rows],
     )
@@ -224,9 +227,11 @@ def get_order_status(
     database_path: Path,
     customer_phone_or_email: str,
     order_id: int | None = None,
+    today: date | None = None,
 ) -> list[OrderStatus] | AuthError:
     """Return only orders owned by the customer identified by phone or e-mail."""
 
+    today = today or date.today()
     raw_identifier = customer_phone_or_email.strip()
     if "@" in raw_identifier:
         column = "email_normalized"
@@ -261,4 +266,4 @@ def get_order_status(
         ).fetchall()
         if order_id is not None and not rows:
             return AuthError(message=GENERIC_ORDER_ERROR)
-        return [_order_from_row(connection, row) for row in rows]
+        return [_order_from_row(connection, row, today) for row in rows]

@@ -1,8 +1,25 @@
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 from emporio.models import AuthError, NotFound, ProductDetails
 from emporio.tools import get_order_status, get_product_details, search_products
+
+
+def test_order_days_since_receipt_is_computed_in_code(database_path: Path) -> None:
+    # Order 7 was delivered with estimated_delivery 2026-02-17. The day count is
+    # deterministic code because the model miscounts calendar differences.
+    late = get_order_status(
+        database_path, "leticia.rocha@jmail.com", order_id=7, today=date(2026, 7, 3)
+    )
+    within = get_order_status(
+        database_path, "leticia.rocha@jmail.com", order_id=7, today=date(2026, 2, 20)
+    )
+
+    assert isinstance(late, list) and isinstance(within, list)
+    assert late[0].receipt_date == date(2026, 2, 17)
+    assert late[0].days_since_receipt == 136
+    assert within[0].days_since_receipt == 3
 
 
 def test_search_products_filters_category_price_and_availability(database_path: Path) -> None:

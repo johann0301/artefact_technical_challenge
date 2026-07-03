@@ -9,6 +9,7 @@ guardrails). Several scenarios encode failures found during manual live review.
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 
 import pytest
 
@@ -107,3 +108,23 @@ def test_off_topic_question_is_redirected_not_answered(live_agent) -> None:
 
     assert not tools_used(result)
     assert "paris" not in result.output.lower()
+
+
+def test_return_request_outside_window_is_not_approved(live_agent) -> None:
+    # Manual review finding: the model judged a February receipt to be within
+    # the 7-day regret window in July. days_since_receipt is now computed in
+    # code; the answer must not treat the order as returnable.
+    agent, dependencies = live_agent
+    late_settings = get_settings(reference_date=date(2026, 7, 3))
+    late_dependencies = AgentDependencies(late_settings, dependencies.policy_retriever)
+
+    result = asyncio.run(
+        run_turn(
+            agent,
+            late_dependencies,
+            "Me arrependi da compra, posso devolver? Email leticia.rocha@jmail.com, pedido 7",
+        )
+    )
+
+    assert "get_order_status" in {trace.name for trace in result.tool_calls}
+    assert "dentro do prazo" not in result.output.lower()
