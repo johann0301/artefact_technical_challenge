@@ -2,7 +2,7 @@
 
 Customer-support agent built in Python for the Artefact AI Engineer technical challenge. It answers Brazilian
 customers in PT-BR, queries operational data through typed tools, retrieves store policies through a small RAG
-pipeline, and makes its tool-routing decisions visible in both CLI and Streamlit.
+pipeline, and makes its tool-routing decisions visible in CLI, Streamlit, and a streaming API.
 
 ## What it demonstrates
 
@@ -12,7 +12,10 @@ pipeline, and makes its tool-routing decisions visible in both CLI and Streamlit
 - Product and order queries use parameterized SQL; no text-to-SQL is exposed to the model.
 - Order data requires an unambiguous customer phone or e-mail and never returns another customer's order.
 - Streamlit shows tool names and arguments without exposing private chain-of-thought.
+- A FastAPI endpoint streams the same turns as Server-Sent Events (`tool_call`, `text`, `done`).
 - Conversation history is preserved in memory for follow-up questions within one session.
+- Eight live golden scenarios (`pytest -m live`) guard tool routing, grounding, and the privacy guardrail
+  against prompt or model regressions.
 
 The detailed design and trade-offs are documented in [Architecture](docs/architecture.md) and
 [Technical Decisions](docs/decisions.md).
@@ -88,6 +91,21 @@ Streamlit:
 uv run streamlit run app.py
 ```
 
+API (FastAPI, Server-Sent Events):
+
+```bash
+uv run emporio-api
+```
+
+```bash
+curl -N http://127.0.0.1:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Quanto custa o Takamine GD20?", "session_id": "demo"}'
+```
+
+The endpoint streams `tool_call`, `text` (answer deltas), and `done` events; history is kept in memory per
+`session_id`, and `GET /api/health` answers `{"status": "ok"}`.
+
 ## Configuration
 
 | Variable | Required | Default | Purpose |
@@ -109,7 +127,7 @@ REFERENCE_DATE=2026-02-20
 Customer message
       │
       ▼
-CLI / Streamlit ──► PydanticAI agent ──► typed tool selection
+CLI / Streamlit / FastAPI (SSE) ──► PydanticAI agent ──► typed tool selection
                                            ├── catalog/products ──► SQLite
                                            ├── customer orders ───► SQLite
                                            └── store policies ────► ChromaDB
@@ -179,13 +197,26 @@ Coverage includes:
 - effective promotional prices, stock filtering, name normalization, and injection-shaped input;
 - customer identification, duplicate e-mails, and cross-customer order protection;
 - PDF section extraction, local vector ingestion, and policy retrieval;
-- agent configuration, persona rules, streaming, history, and Streamlit startup errors.
+- agent configuration, persona rules, streaming, history, and Streamlit startup errors;
+- the SSE endpoint contract: event order, error events, session history, and missing-key responses.
+
+Live behavior evals (optional, needs `OPENAI_API_KEY`, costs cents):
+
+```bash
+uv run pytest -m live
+```
+
+Eight golden scenarios assert which tools the agent calls and key facts or refusals in the answers — catalog
+filtering, product-name normalization, policy-first answers, address lookup, order status, the cross-customer
+privacy guardrail, the accessory refusal, and off-topic redirection. Several encode failures found during manual
+live review, so they act as regression tests for the persona and routing.
 
 ## Known limitations and next steps
 
 - Chat and policy ingestion require an OpenAI key and network access. A keyword retrieval fallback could support
   offline use.
-- Retrieval is validated with deterministic sanity tests, not a larger golden-question evaluation set.
+- Behavior evals cover eight golden scenarios; a production agent would grow this into a versioned eval dataset
+  with LLM-judged quality dimensions running in CI.
 - Receipt dates are inferred because the source schema lacks `delivered_at`.
 - History is in memory only and resets with the process or Streamlit session.
 - There is no production authentication, PII masking in logs, human handoff, tracing, or rate limiting.
@@ -214,12 +245,13 @@ remain explicit in the repository rather than being delegated to the coding assi
 ├── examples/                 # Five PT-BR interaction transcripts
 ├── src/emporio/
 │   ├── agent.py              # PydanticAI tools and event streaming
+│   ├── api.py                # FastAPI SSE chat endpoint
 │   ├── cli.py                # Rich terminal interface and transcript export
 │   ├── etl.py                # Atomic CSV-to-SQLite ingestion
 │   ├── ingest_policies.py    # PDF section extraction and embeddings
 │   ├── retrieval.py          # ChromaDB policy search
 │   └── tools.py              # Parameterized catalog and order operations
-└── tests/                    # Offline unit and integration tests
+└── tests/                    # Offline unit/integration tests + opt-in live behavior evals
 ```
 
 ## Challenge documentation
