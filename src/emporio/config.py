@@ -25,6 +25,9 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
         env_ignore_empty=True,
+        # Aliased fields must also accept their Python names, otherwise
+        # get_settings(**overrides) silently ignores overrides.
+        populate_by_name=True,
     )
 
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
