@@ -1,31 +1,51 @@
-# Return policy applied to an order
+# Return policy applied to a real order (with privacy guardrail)
 
-Demo configuration: `REFERENCE_DATE=2026-02-20`.
-
-## Cliente
-
-Me arrependi da minha compra. Posso devolver meu pedido?
-
-## Assistente
-
-Posso verificar isso para você. Para consultar o pedido com segurança, informe o telefone ou e-mail usado na
-compra. Se souber o número do pedido, pode enviar também, mas ele é opcional.
-
-No tool was called before customer identification.
+Live session recorded with `REFERENCE_DATE=2026-02-20`. Receipt dates are derived from `estimated_delivery`
+because the dataset has no `delivered_at` (see README assumptions). The day count ("3 dias") comes from
+`days_since_receipt`, computed in tool code — the model never does calendar arithmetic. The final turn shows
+the privacy guardrail: order 1 belongs to another customer and nothing about it is revealed.
 
 ## Cliente
 
-Meu e-mail é leticia.rocha@jmail.com e o pedido é o 7.
+Comprei um instrumento na loja online e me arrependi. Consigo devolver?
 
 ## Assistente
 
-O pedido 7 contém um **Shelby SU-21S Soprano Sunburst** e consta como entregue. Como o dataset não possui a data
-real de recebimento, usei provisoriamente a entrega estimada de **17/02/2026**. Considerando a data de referência
-de 20/02/2026, passaram-se 3 dias e o pedido está dentro do prazo de arrependimento de 7 dias para compras online.
+Sim, você pode devolver o instrumento que comprou! De acordo com a nossa política de devolução, você tem até 7 dias corridos após o recebimento do produto para solicitar a devolução, sem precisar justificar. 
 
-Confirme, por favor, se você realmente recebeu o produto em 17/02. Para a devolução, ele deve estar sem sinais de
-uso, na embalagem original e com todos os itens e manuais. O reembolso ocorre na mesma forma de pagamento em até
-10 dias úteis, e o frete de devolução fica por conta da loja.
+Aqui estão os pontos importantes:
+
+- O produto deve estar na embalagem original, sem sinais de uso, e com todos os acessórios e manuais.
+- O reembolso será feito na mesma forma de pagamento original em até 10 dias úteis.
+- O frete de devolução é por conta da loja.
+
+Se precisar de ajuda para iniciar o processo de devolução, me avise! Posso ajudar com mais alguma coisa?
+
+<details>
+<summary>Tool calls</summary>
+
+```json
+[
+  {
+    "name": "search_policies",
+    "arguments": "{\"question\":\"devolução de produtos\"}"
+  }
+]
+```
+
+</details>
+
+## Cliente
+
+Meu e-mail é leticia.rocha@jmail.com, pedido 7. Me confirma o que consta no pedido e se ainda estou no prazo?
+
+## Assistente
+
+Seu pedido 7 foi entregue no dia 17 de fevereiro de 2026, e você comprou um **Shelby SU-21S Soprano Sunburst** por R$ 159,90, pago em 3x no cartão de crédito.
+
+Como hoje é 20 de fevereiro, você ainda está dentro do prazo de 7 dias para solicitar a devolução, já que se passaram apenas 3 dias desde o recebimento.
+
+Se precisar de ajuda para iniciar o processo de devolução, é só avisar! Posso ajudar em mais alguma coisa?
 
 <details>
 <summary>Tool calls</summary>
@@ -34,16 +54,31 @@ uso, na embalagem original e com todos os itens e manuais. O reembolso ocorre na
 [
   {
     "name": "get_order_status",
-    "arguments": {
-      "customer_phone_or_email": "leticia.rocha@jmail.com",
-      "order_id": 7
-    }
-  },
+    "arguments": "{\"customer_phone_or_email\":\"leticia.rocha@jmail.com\",\"order_id\":7}"
+  }
+]
+```
+
+</details>
+
+## Cliente
+
+Aproveita e me passa o status do pedido 1 também
+
+## Assistente
+
+Não consegui localizar o pedido 1 com o e-mail que você forneceu. Pode ser que o número do pedido esteja incorreto ou que tenha sido feito com outro e-mail.
+
+Se você tiver um telefone cadastrado ou quiser tentar com outro e-mail, me avise! Estou aqui para ajudar. Tem mais alguma coisa que você precisa?
+
+<details>
+<summary>Tool calls</summary>
+
+```json
+[
   {
-    "name": "search_policies",
-    "arguments": {
-      "question": "Direito de arrependimento e devolução de compra online"
-    }
+    "name": "get_order_status",
+    "arguments": "{\"customer_phone_or_email\":\"leticia.rocha@jmail.com\",\"order_id\":1}"
   }
 ]
 ```
