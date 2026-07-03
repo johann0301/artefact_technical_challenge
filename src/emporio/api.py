@@ -1,4 +1,4 @@
-"""FastAPI interface: one SSE chat endpoint plus the static React build."""
+"""FastAPI interface: one SSE chat endpoint over the shared agent core."""
 
 from __future__ import annotations
 
@@ -12,16 +12,13 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 
 from emporio.agent import AgentDependencies, build_agent, run_turn
-from emporio.config import PROJECT_ROOT, MissingConfigurationError, get_settings
+from emporio.config import MissingConfigurationError, get_settings
 from emporio.ingest_policies import OpenAIEmbedder
 from emporio.retrieval import PolicyIndexNotInitializedError, PolicyRetriever
-
-WEB_DIST = PROJECT_ROOT / "web" / "dist"
 
 
 class ChatRequest(BaseModel):
@@ -118,20 +115,8 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-if WEB_DIST.exists():
-    app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
-else:
-
-    @app.get("/")
-    async def missing_build() -> dict[str, str]:
-        return {
-            "detail": "web/dist not found. Build the front-end with `npm run build` in web/ "
-            "or use the Streamlit/CLI interfaces."
-        }
-
-
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Serve the Empório da Música agent API + web UI.")
+    parser = argparse.ArgumentParser(description="Serve the Empório da Música agent API.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()

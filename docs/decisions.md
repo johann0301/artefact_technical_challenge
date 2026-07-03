@@ -243,44 +243,39 @@ deterministically in tools, not by the LLM.
 
 ---
 
-## ADR-010 — Third interface: FastAPI + React chat with a committed production build
+## ADR-010 — Third interface: FastAPI SSE endpoint (custom React front-end considered and dropped)
 
-**Context.** The role also involves full-stack work, and the repo so far demonstrates everything except a custom
-front-end (CLI + Streamlit only). The challenge statement de-prioritizes UI, and ADR-010's predecessor decisions
-established a hard constraint: the evaluator must be able to run everything with `uv` and one API key — no
-extra toolchain.
+**Context.** The challenge statement lists "API" among the accepted interfaces. The repo already had CLI and
+Streamlit over an interface-agnostic core. A custom React front-end (Vite + TS + Tailwind, production build
+committed so the evaluator would not need Node) was planned and started, then reconsidered.
 
-**Decision.** Add a third thin interface over the same `agent.py` core:
+**Decision.**
 
-- `src/emporio/api.py`: FastAPI app exposing `POST /api/chat` as **Server-Sent Events** (`tool_call`, `text`
-  delta, and `done` events), with per-`session_id` in-memory history — the same events the CLI and Streamlit
-  already consume from `run_turn`, serialized over HTTP.
-- `web/`: React + TypeScript + Tailwind chat (Vite) rendering streamed text and the tool calls behind each
-  answer — the same routing-visibility concept as the Streamlit expander.
-- The production build (`web/dist/`) is **committed** and served statically by FastAPI: the evaluator runs
-  `uv run emporio-api` and opens a browser. Node.js is only needed to modify the front-end.
+- Keep `src/emporio/api.py`: FastAPI exposing `POST /api/chat` as **Server-Sent Events** (`tool_call`, `text`
+  delta, and `done` events) with per-`session_id` in-memory history — the same `run_turn` callbacks the CLI and
+  Streamlit consume, serialized over HTTP. Demonstrable with `curl`; `/api/health` for checks.
+- **Drop the React front-end.** The statement explicitly de-prioritizes UI ("the focus is the agent working
+  correctly"), Streamlit already provides the visual demo with tool-call visibility, and a second chat UI would
+  duplicate that at the cost of a Node toolchain, committed build artifacts, and more surface for the evaluator
+  to review — complexity without new signal. Reversing the earlier plan mid-way was cheaper than carrying it.
 
 **Why.**
 
-- Demonstrates API design + custom front-end integration without touching the agent core — the same
-  `run_turn` callbacks power all three interfaces, which is the point of keeping the core interface-agnostic.
-- Committing `dist/` preserves the zero-friction evaluator path (uv + one key), at the cost of ~200 kB of
-  generated files in Git — acceptable for a challenge repo, wrong for a team repo (see At scale).
-- SSE over WebSockets: the chat is strictly request→streamed-response; SSE is plain HTTP, simpler to test
-  with `httpx`, and needs no connection-state management.
+- The API is one small, fully tested module that shows service design (streaming contract, error paths,
+  session state) without touching the agent core.
+- SSE over WebSockets: the chat is strictly request→streamed-response; SSE is plain HTTP and simpler to test.
+- The front-end failed this repo's own bar — every layer needs a justification anchored in this problem, and
+  "a second chat UI" had none once Streamlit existed.
 
 **Rejected alternatives.**
 
-- *Next.js (App Router)*: my default for real products, but here there is one page, no SSR/SEO/routing need,
-  and it would force either a Node server (breaks the uv-only run path) or static export (discards most of
-  what Next adds).
-- *Requiring `npm install && npm run build` from the evaluator*: violates the reproducibility constraint that
-  every other decision protected.
-- *tRPC / state libraries (Zustand, React Query)*: one endpoint, one page of UI state — `useState` and a small
-  SSE hook are sufficient.
+- *React + committed `dist/` served by FastAPI*: preserved the uv-only run path, but shipped generated files in
+  Git and duplicated the Streamlit demo. Dropped.
+- *Next.js*: one page, no SSR/SEO/routing need; would force a Node server or a static export.
 
-**At scale.** Next.js (or the team's standard), CI building the front-end instead of committing `dist/`,
-WebSockets if bidirectional events appear (typing indicators, human handoff), auth on the API, and rate limiting.
+**At scale.** A real product gets a real front-end (Next.js or the team's standard) consuming this same SSE
+contract, CI-built; WebSockets if bidirectional events appear (typing indicators, human handoff); auth and rate
+limiting on the API.
 
 ---
 

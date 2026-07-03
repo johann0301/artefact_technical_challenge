@@ -30,7 +30,7 @@ Off-topic questions trigger no tool — the persona prompt instructs a polite in
 ## Tools
 
 | Tool | Signature (typed params) | Backs | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `search_products` | `(query: str \| None, category: str \| None, max_price: float \| None, min_price: float \| None) -> list[ProductSummary]` | SQLite | Parameterized SQL; joins active promotions → returns effective price; only `status='active'` |
 | `get_product_details` | `(product_name: str) -> ProductDetails \| NotFound` | SQLite | Name normalization (lowercase, strip hyphens/spaces) so "GD20" matches "GD-20"; returns specs, stock, price w/ promo |
 | `get_order_status` | `(customer_phone_or_email: str, order_id: int \| None = None) -> list[OrderStatus] \| AuthError` | SQLite | Customers rarely know order ids: identifier alone lists that customer's orders; with id, returns full detail. **Privacy guardrail in code**: identifier must match the order's customer; never leaks other customers. Response joins `order_items` → product names, includes `tracking_code`, `estimated_delivery`, `notes` |
@@ -44,7 +44,7 @@ Design rules:
 
 ## Project layout (planned)
 
-```
+```text
 emporio_agent/
 ├── pyproject.toml            # uv-managed
 ├── README.md
@@ -62,11 +62,8 @@ emporio_agent/
 │   ├── agent.py              # PydanticAI agent + persona prompt
 │   ├── persona.py            # agent instructions (PT-BR)
 │   ├── cli.py                # chat loop (rich), streaming, transcript export
-│   └── api.py                # FastAPI: POST /api/chat (SSE) + serves web/dist (ADR-010)
+│   └── api.py                # FastAPI: POST /api/chat (SSE), /api/health (ADR-010)
 ├── app.py                    # Streamlit chat: streaming + tool-call visibility (expander per response)
-├── web/                      # React + TS + Tailwind chat (Vite); dist/ committed
-│   ├── src/                  # App, ChatMessage, ToolCallBadge, useChatStream hook
-│   └── dist/                 # production build served by FastAPI (no Node needed to run)
 └── tests/
     ├── test_etl.py
     ├── test_tools.py         # incl. privacy guardrail cases
@@ -114,11 +111,10 @@ Three thin layers over the same `agent.py` core (`run_turn` + its `on_text`/`on_
 - **Streamlit** (`app.py`): zero-friction chat. Streams responses and renders an expander per answer showing
   which tools were called and with what arguments (🔧 catalog / 📦 orders / 📖 policies). This makes the agent's
   routing — "knows when to query data vs policies", an explicitly evaluated behavior — directly observable.
-- **FastAPI + React** (`src/emporio/api.py` + `web/`, ADR-010): `POST /api/chat` streams Server-Sent Events —
-  `tool_call` (name + args, emitted when the call happens), `text` (answer deltas), `done` (turn complete).
-  History kept in memory per `session_id`. FastAPI also serves the committed React build (`web/dist/`), so the
-  evaluator runs `uv run emporio-api` and opens a browser — Node.js is only needed to modify the front-end
-  (React + TypeScript + Tailwind via Vite; no router/state library — one page, one SSE hook).
+- **FastAPI** (`src/emporio/api.py`, ADR-010): `POST /api/chat` streams Server-Sent Events — `tool_call`
+  (name + args, emitted when the call happens), `text` (answer deltas), `done` (turn complete). History kept
+  in memory per `session_id`; `/api/health` for checks. Run with `uv run emporio-api`, demo with `curl -N`.
+  A custom React front-end was considered and dropped (see ADR-010) — Streamlit already covers the visual demo.
 
 ## Behavior evals (ADR-011)
 
