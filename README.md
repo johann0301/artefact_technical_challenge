@@ -10,6 +10,20 @@ is shaped this way.
 
 Prerequisites: [uv](https://docs.astral.sh/uv/) and an OpenAI API key.
 
+**0. Install uv** (skip if you already have it):
+
+```bash
+# Linux / macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+```powershell
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Restart the terminal afterwards (or follow the installer's PATH instructions) so `uv` is on the PATH.
+
 **1. Clone and install the locked environment** (installs Python 3.12 automatically if needed):
 
 ```bash
@@ -164,7 +178,7 @@ Two assistants with distinct roles, in a loop:
   helped structure the documentation around decisions I had already made: mapping the challenge PDF into a
   deliverables checklist and recording each decision as an ADR (rationale + rejected alternatives + at-scale
   notes) **before** implementation. The ADRs later became this README's justification sections.
-- **OpenAI Codex** helped with the implementation — accelerating the typing of code I designed and reviewed,
+- **OpenAI Codex** helped with the implementation
   working against the real schemas and installed library APIs, and surfacing dataset edge cases along the way
   (the duplicated customer e-mail, the missing `delivered_at` column). The hands stayed on the wheel: I wrote
   code directly where it was faster to do so, and no generated code was committed without being read, adjusted,
