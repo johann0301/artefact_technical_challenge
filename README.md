@@ -10,41 +10,46 @@ is shaped this way.
 
 Prerequisites: [uv](https://docs.astral.sh/uv/) and an OpenAI API key.
 
-**0. Install uv** (skip if you already have it):
+**1. Clone the repository:**
+
+```bash
+git clone https://github.com/johann0301/artefact_technical_challenge.git
+cd artefact_technical_challenge
+```
+
+**2. Install uv** (skip if you already have it) — the second line puts `uv` on the PATH for the current session:
 
 ```bash
 # Linux / macOS
 curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ```powershell
 # Windows
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+$env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 ```
 
-Restart the terminal afterwards (or follow the installer's PATH instructions) so `uv` is on the PATH.
-
-**1. Clone and install the locked environment** (installs Python 3.12 automatically if needed):
+**3. Install the locked environment** (installs Python 3.12 automatically if needed):
 
 ```bash
-git clone https://github.com/johann0301/artefact_technical_challenge.git
-cd artefact_technical_challenge
 uv sync --locked
 ```
 
-**2. Configure your key** — copy the template, then edit `.env` and set `OPENAI_API_KEY`:
+**4. Configure your key** — copy the template, then edit `.env` and set `OPENAI_API_KEY`:
 
 ```bash
 cp .env.example .env
 ```
 
-**3. Build the local data artifacts** (CSVs → SQLite; policy PDF → embeddings — uses cents of API credit):
+**5. Build the local data artifacts** (CSVs → SQLite; policy PDF → embeddings — uses cents of API credit):
 
 ```bash
 uv run emporio-setup
 ```
 
-**4. Chat** — Streamlit UI with visible tool calls:
+**6. Chat** — Streamlit UI with visible tool calls:
 
 ```bash
 uv run streamlit run app.py
