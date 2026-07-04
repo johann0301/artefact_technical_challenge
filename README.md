@@ -61,6 +61,24 @@ or the terminal chat (`--transcript FILE` exports the conversation to Markdown):
 uv run emporio-chat
 ```
 
+### Alternative: run with Docker (recommended on Windows)
+
+If you prefer not to install uv/Python on the host — or hit OS-specific friction — the container reproduces the
+exact same locked environment anywhere. Only Docker is required:
+
+```bash
+docker build -t emporio-agent .
+docker run --rm -p 8501:8501 -e OPENAI_API_KEY=your-key-here emporio-agent
+```
+
+Open <http://localhost:8501>. The first start builds the data artifacts automatically (SQLite + policy
+embeddings, cents of API credit). The `.env` file never enters the image — the key is passed at runtime.
+For the terminal chat inside the container:
+
+```bash
+docker run --rm -it -e OPENAI_API_KEY=your-key-here emporio-agent .venv/bin/emporio-chat
+```
+
 Configuration (only the key is required):
 
 | Variable | Default | Purpose |

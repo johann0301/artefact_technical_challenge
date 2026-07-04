@@ -313,3 +313,32 @@ Costs cents per run.
 
 **At scale.** Versioned eval dataset, LLM-judge for tone/quality dimensions, eval runs in CI on prompt/model
 changes, dashboards over time (promptfoo/braintrust-style), and red-team suites for the guardrails.
+
+---
+
+## ADR-012 — Docker as the standardized alternative run path
+
+**Context.** Real fresh-machine validation of the quick start: a clean Linux container followed the README
+top-to-bottom without issues, but a fresh Windows machine hit friction (PATH, execution policy, toolchain
+differences). The evaluator may be on any OS.
+
+**Decision.** Ship a `Dockerfile` (official `uv` base image) as a standardized alternative: `docker build` +
+`docker run -e OPENAI_API_KEY=...` boots the Streamlit app identically on any OS. Native uv remains the primary
+path. Details: dependency layer cached separately from code; dev dependencies excluded; `.env` never enters the
+image (`.dockerignore` — the key is passed at runtime); first start builds the data artifacts automatically;
+the synced virtualenv is invoked directly so startup needs no package downloads; port overridable via `PORT`.
+
+**Why.**
+
+- One command reproduces the exact locked environment on Windows/macOS/Linux — eliminates the whole class of
+  host-toolchain problems observed in practice.
+- Keeping the native path primary avoids forcing Docker Desktop on evaluators who don't have it; the two paths
+  cover each other's failure modes.
+
+**Rejected alternatives.**
+
+- *Docker-only*: trades toolchain friction for Docker-install friction; worse for evaluators without Docker.
+- *docker compose*: single service, no orchestration to express.
+
+**At scale.** CI-built images pushed to a registry, secrets from a manager (not env flags), and the container
+as the deploy unit behind the channel integration.
