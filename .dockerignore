@@ -1,0 +1,13 @@
+# Secrets must never enter the image; pass OPENAI_API_KEY at runtime.
+.env
+
+# Generated artifacts are rebuilt inside the container.
+emporio.db
+chroma/
+
+.git/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
