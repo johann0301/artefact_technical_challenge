@@ -106,6 +106,12 @@ text-to-SQL is exposed to the model.
 
 ### Why these choices
 
+I deliberately shaped the stack around one rule: this is a small, well-specified problem — 65 products, 20
+orders, a 10-page policy PDF, four clear intents — so every technology had to cover 100% of the case while
+adding zero infrastructure or setup complexity. Anything that would only pay off at a larger scale was not
+built; it is documented as an "at scale" note in the ADRs instead. Overengineering a problem this size would
+cost evaluation friction (heavier setup, more surface to review) and buy nothing in answer quality.
+
 - **Single agent:** four clear intents do not justify an additional router or state graph.
 - **PydanticAI:** concise typed tool schemas, validation, provider configuration, and event streaming.
 - **`gpt-4o-mini`:** reliable tool calling for cents; the model is a config string, so swapping is a one-line change.
